@@ -379,40 +379,79 @@ $('addQuoteItem').addEventListener('click',()=>{const row=addQuoteLine();row.que
 quoteItems.addEventListener('click',event=>{const remove=event.target.closest('[data-remove-quote]');if(!remove)return;const row=remove.closest('.quote-line');row.remove();if(!quoteRows().length)addQuoteLine();updateQuoteSummary();quoteSetStatus('')});
 quoteItems.addEventListener('input',()=>{updateQuoteSummary();quoteSetStatus('')});
 $('copyQuote').addEventListener('click',async()=>{const items=quoteValidate();if(!items)return;const msg=quoteText(items);const ok=await copyQuoteText(msg);quoteSetStatus(ok?quoteWords.copied:quoteWords.copyFailed,!ok)});
-$('compatForm').addEventListener('submit',event=>{
- event.preventDefault();const items=quoteValidate();if(!items)return;const msg=quoteText(items);
- const url=whatsapp(msg);
- // A long WhatsApp URL is unreliable on some devices; allow a complete copy instead.
- if(url.length>5500){
-  const contact='https://wa.me/'+phone;
-  const newTab=window.open(contact,'_blank','noopener,noreferrer');if(!newTab)location.href=contact;
-  copyQuoteText(msg).then(ok=>quoteSetStatus(ok?quoteWords.long:quoteWords.longFail,!ok));
- }else{
-  const tab=window.open(url,'_blank','noopener,noreferrer');if(!tab)location.href=url;
-  quoteSetStatus(quoteWords.ready);
+// Registrar solicitudes en la base MIRVOX y después continuar por WhatsApp.
+const leadWords=lang==='es'?{
+  bad:'Ingresa un nombre válido, WhatsApp y acepta el aviso de privacidad.',wait:'Registrando la solicitud en Google Sheets…',
+  done:'Solicitud registrada en MIRVOX. Ahora se abrirá WhatsApp.',notReady:'Falta conectar el receptor de Google Sheets. Puedes usar WhatsApp, pero todavía NO se guardará esta solicitud.',
+  fail:'No se confirmó el registro en Google Sheets. Puedes reintentar o abrir WhatsApp sin registro.',
+  saved:'Guardado en Google Sheets. Presiona Enviar dentro de WhatsApp.',
+  fallback:'Continúa por WhatsApp: el registro en Google Sheets no está activo.'
+}:{
+  bad:'Enter your name, WhatsApp number and accept the privacy notice.',wait:'Saving this request to Google Sheets…',
+  done:'Request saved in MIRVOX. WhatsApp will now open.',notReady:'Google Sheets receiver is not configured. You may use WhatsApp, but this request will NOT be recorded.',
+  fail:'Google Sheets did not confirm receipt. Try again or use WhatsApp without saving.',
+  saved:'Saved to Google Sheets. Press Send inside WhatsApp.',
+  fallback:'Continue via WhatsApp: Google Sheets is not active.'
+};
+function validPhone(text){const digits=text.replace(/\D/g,'');return digits.length>=8&&digits.length<=15&&/^[+\d\s()\-]{8,25}$/.test(text)}
+function showFallback(id,href){const link=$(id);if(link){link.href=href;link.hidden=false}}
+function formFieldError(field,description,status){status.textContent=description;field?.focus();return false}
+async function registerAndContinue({data,msg,status,button,fallbackId}){
+ const url=whatsapp(msg);const fallback=$(fallbackId);if(fallback)fallback.hidden=true;
+ status.classList.remove('is-error');
+ if(!window.MIRVOX_SHEETS?.configured()){
+  status.classList.add('is-error');
+  status.textContent=leadWords.notReady;showFallback(fallbackId,url);return;
  }
+ button.disabled=true;button.setAttribute('aria-busy','true');status.textContent=leadWords.wait;
+ try{
+  const result=await window.MIRVOX_SHEETS.save(data);
+  status.textContent=leadWords.saved+' #'+result.orderId;
+  showFallback(fallbackId,url);
+  // Tras recibir acuse del servidor, continuar en la misma pestaña evita bloqueos de pop-ups.
+  window.location.assign(url);
+ }catch(error){
+  status.classList.add('is-error');
+  status.textContent=leadWords.fail+' ('+(error?.message||'ERROR')+')';
+  showFallback(fallbackId,url);
+ }finally{button.disabled=false;button.removeAttribute('aria-busy')}
+}
+$('compatForm').addEventListener('submit',async event=>{
+ event.preventDefault();const items=quoteValidate();if(!items)return;
+ const status=$('quoteStatus');
+ const name=getValue('leadName'),phone=getValue('leadPhone');
+ if(name.length<2)return formFieldError($('leadName'),leadWords.bad,status);
+ if(!validPhone(phone))return formFieldError($('leadPhone'),leadWords.bad,status);
+ if(!$('leadPrivacy').checked)return formFieldError($('leadPrivacy'),leadWords.bad,status);
+ const orderId=window.MIRVOX_SHEETS.makeId();
+ const rows=items.map(item=>({sku:'',name:item.part,qty:item.count}));
+ const data={orderId,name,phone,region:getValue('leadRegion'),city:getValue('leadCity'),address:getValue('leadAddress'),
+  notes:[getValue('vehicle')?'Vehículo: '+getValue('vehicle'):'',getValue('vehicleYear')?'Año: '+getValue('vehicleYear'):'',getValue('quoteNotes')].filter(Boolean).join(' · '),
+  privacy:true,marketing:$('leadMarketing').checked,honeypot:getValue('leadWebsite'),items:rows,source:'busqueda'};
+ const msg=quoteText(items)+'\n\n'+(lang==='es'?'Solicitud':'Request')+': '+orderId+'\n'+t.name+': '+name+'\n'+t.tel+': '+phone;
+ await registerAndContinue({data,msg,status,button:$('sendQuote'),fallbackId:'quoteWhatsappFallback'});
 });
 addQuoteLine();
-// WhatsApp-only checkout: no exposed Apps Script URL, no false recording claim.
-$('checkoutForm').addEventListener('submit',event=>{
+if(window.MIRVOX_SHEETS?.configured()){const hint=$('crmInstallHint');if(hint)hint.hidden=true;}
+$('checkoutForm').addEventListener('submit',async event=>{
  event.preventDefault();const items=products.filter(p=>cart[p.id]);const status=$('checkoutStatus');status.textContent='';
  if(!items.length){status.textContent=t.checkEmpty;return}
  for(const id of ['customerName','customerPhone','customerRegion','customerCity','customerAddress']){
   if(!getValue(id)){status.textContent=t.checkRequired;$(id).focus();return}
  }
- if(!/^[+\d\s()\-]{8,25}$/.test(getValue('customerPhone'))||getValue('customerPhone').replace(/\D/g,'').length<8){status.textContent=t.checkPhone;$('customerPhone').focus();return}
+ if(!validPhone(getValue('customerPhone'))){status.textContent=t.checkPhone;$('customerPhone').focus();return}
  if(!$('customerPrivacy').checked){status.textContent=t.checkPrivacy;$('customerPrivacy').focus();return}
- const publicId='MIRVOX-'+Date.now().toString(36).toUpperCase();
- const msg=[t.orderTitle,`${t.reference}: ${publicId}`,
- ...items.map(p=>`• ${p.name} [${p.id}]: ${cart[p.id]} ${t.units}`),'',
- `${t.name}: ${getValue('customerName')}`,`${t.tel}: ${getValue('customerPhone')}`,
- `${t.department}: ${getValue('customerRegion')}`,`${t.municipality}: ${getValue('customerCity')}`,
- `${t.address}: ${getValue('customerAddress')}`,
- `${t.notes}: ${getValue('customerNotes')||t.none}`,`${t.marketing}: ${$('customerMarketing').checked?'SI':'NO'}`,'',t.closing].join('\n');
- const url=whatsapp(msg);
- // Open WhatsApp directly upon user interaction; the user still confirms sending.
- const popup=window.open(url,'_blank','noopener,noreferrer');if(!popup)window.location.assign(url);
- status.textContent=lang==='es'?'WhatsApp está listo. Revisa el mensaje y pulsa Enviar. No se ha cobrado ni guardado un pedido automáticamente.':'WhatsApp is ready. Review and send the message; no payment or database order was created.';
+ const orderId=window.MIRVOX_SHEETS.makeId();
+ const name=getValue('customerName'),phone=getValue('customerPhone');
+ const data={orderId,name,phone,region:getValue('customerRegion'),city:getValue('customerCity'),address:getValue('customerAddress'),notes:getValue('customerNotes'),
+  privacy:true,marketing:$('customerMarketing').checked,honeypot:'',source:'carrito',
+  items:items.map(p=>({sku:p.id,name:p.name,qty:cart[p.id]}))};
+ const msg=[t.orderTitle,`${t.reference}: ${orderId}`,
+  ...items.map(p=>`• ${p.name} [${p.id}]: ${cart[p.id]} ${t.units}`),'',
+  `${t.name}: ${name}`,`${t.tel}: ${phone}`,`${t.department}: ${getValue('customerRegion')}`,
+  `${t.municipality}: ${getValue('customerCity')}`,`${t.address}: ${getValue('customerAddress')}`,
+  `${t.notes}: ${getValue('customerNotes')||t.none}`,'',t.closing].join('\n');
+ await registerAndContinue({data,msg,status,button:$('checkout'),fallbackId:'cartWhatsappFallback'});
 });
 if('IntersectionObserver'in window){
  const observer=new IntersectionObserver(entries=>{for(const en of entries)if(en.isIntersecting){en.target.classList.add('in-view');observer.unobserve(en.target)}},{threshold:.08,rootMargin:'0px 0px -28px 0px'});

@@ -521,3 +521,19 @@ html[data-theme="dark"] .brand img.mirvox-logo-theme{content:url('assets/mirvox-
 @media(max-width:1000px){.compat-layout{grid-template-columns:1fr;gap:30px}.compat-copy{padding:0}.compat-copy p{max-width:720px}.multi-quote-form{max-width:800px;width:100%;margin:auto}}
 @media(max-width:550px){.quote-line{grid-template-columns:minmax(0,1fr) 80px 35px;gap:6px;padding:9px;border-radius:12px}.quote-line .field input{padding:10px 8px;height:45px;font-size:13px}.quote-line .field label{font-size:11px}.quote-remove{width:35px;height:45px}.quote-buttons{grid-template-columns:1fr}.quote-copy{min-height:47px}.quote-vehicle-grid{grid-template-columns:1fr 1fr}.quote-vehicle-grid input{font-size:14px}.quote-heading strong{font-size:16px}}
 @media(max-width:350px){.quote-line{grid-template-columns:minmax(0,1fr) 68px 32px;gap:5px}.quote-remove{width:32px}}
+
+/* MIRVOX CRM - registro real de clientes y múltiples referencias */
+.quote-contact{border:1px solid var(--line2);border-radius:16px;margin:18px 0 20px;padding:20px;min-width:0}
+.quote-contact legend{padding:0 8px;font-weight:850;letter-spacing:-.015em;font-size:16px;color:var(--ink)}
+.crm-helper{margin:0 0 15px;color:var(--sub);font-size:13px;line-height:1.6}
+.quote-contact .field-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.quote-contact .field{min-width:0;margin-bottom:12px}
+.quote-contact .field input{width:100%;min-width:0}
+.quote-contact .check-line{display:flex;align-items:flex-start;gap:10px;margin-top:11px;font-size:12px;line-height:1.5;color:var(--sub)}
+.quote-contact .check-line input{width:16px;height:16px;flex:0 0 16px;accent-color:var(--red);margin-top:3px}
+.crm-hp{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;opacity:0!important;overflow:hidden!important}
+.crm-install-hint{margin:9px 0;font-size:12px;color:var(--sub);font-weight:650}
+.crm-whatsapp-fallback{display:inline-flex;margin-top:8px;max-width:100%;border:1px solid var(--line2);border-radius:10px;padding:10px 13px;font-size:13px;font-weight:750;color:var(--ink);text-decoration:none}
+.crm-whatsapp-fallback[hidden]{display:none}
+.crm-whatsapp-fallback:hover{border-color:#25d366;color:#139d51}
+@media(max-width:620px){.quote-contact{padding:16px 13px}.quote-contact .field-row{grid-template-columns:1fr;gap:0}}
