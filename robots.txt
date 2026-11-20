@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+# Add an absolute Sitemap URL once the final domain is configured.
