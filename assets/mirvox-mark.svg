@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="MIRVOX">
+<defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#ff6470"/><stop offset="1" stop-color="#bc172a"/></linearGradient></defs>
+<rect x="1" y="1" width="62" height="62" rx="13" fill="#111a25" stroke="#e6404c" stroke-width="1.5"/>
+<path d="M9 47V17h9l14 15 14-15h9v30h-9V30L32 46 18 30v17z" fill="url(#g)"/>
+<path d="M32 38 20 25h-5l17 19 17-19h-5z" fill="#fff" opacity=".9"/>
+</svg>
